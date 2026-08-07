@@ -164,8 +164,8 @@ th{color:var(--orange-700);font-weight:700}
 
         <label>ยอดซื้อ (บาท)</label>
         <div class="amount-box">
-          <input id="amount-input" type="number" min="1" step="1" inputmode="numeric" placeholder="พิมพ์จำนวนเงินที่ซื้อ เช่น 150" oninput="updateAmountPreview()">
-          <div class="hint">ระบบจะคำนวณโบนัสและแต้มให้อัตโนมัติ</div>
+          <input id="amount-input" type="number" min="5" step="1" inputmode="numeric" placeholder="พิมพ์จำนวนเงินที่ซื้อ เช่น 150" oninput="updateAmountPreview()">
+          <div class="hint">ขั้นต่ำ 5 บาท • ต่ำกว่า 50 บาท = 1 บาท/แต้ม • ตั้งแต่ 50 บาทขึ้นไป = 0.67 บาท/แต้ม</div>
         </div>
 
         <div id="vote-preview" class="result"></div>
@@ -233,9 +233,11 @@ th{color:var(--orange-700);font-weight:700}
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzbJyXnrfCFkFzg9rpFk85LTOvq2cLPl4ZwRaD54760YGHNh44CeUR-E8MdcZss7R2I/exec";
-const BONUS_RATE = 0.5;
 const POINTS_PER_STICKER = 5;
-const MIN_AMOUNT = 1;
+const MIN_AMOUNT = 5;
+const THRESHOLD_AMOUNT = 50;       // ตั้งแต่ยอดนี้ขึ้นไปจะได้อัตราโบนัส
+const STANDARD_BAHT_PER_POINT = 1;    // ต่ำกว่า 50 บาท: 1 บาท = 1 แต้ม
+const BONUS_BAHT_PER_POINT = 0.67;    // ตั้งแต่ 50 บาทขึ้นไป: 0.67 บาท = 1 แต้ม
 const SCOREBOARD_REFRESH_MS = 30000;
 
 let selectedAmount = 0;
@@ -349,6 +351,14 @@ function resetAmountInput(){
   if(preview) preview.style.display='none';
 }
 
+/** คำนวณแต้มตามอัตรา: ต่ำกว่า 50 บาท = 1 บาท/แต้ม, ตั้งแต่ 50 บาทขึ้นไป = 0.67 บาท/แต้ม (ปัดเศษแต้มเป็นจำนวนเต็ม) */
+function calcPoints(amount){
+  if(amount < THRESHOLD_AMOUNT){
+    return Math.round(amount / STANDARD_BAHT_PER_POINT);
+  }
+  return Math.round(amount / BONUS_BAHT_PER_POINT);
+}
+
 function updateAmountPreview(){
   const input=document.getElementById('amount-input');
   const box=document.getElementById('vote-preview');
@@ -362,12 +372,12 @@ function updateAmountPreview(){
   }
 
   selectedAmount=amount;
-  const bonus=Math.round(amount*BONUS_RATE);
-  const total=amount+bonus;
+  const total=calcPoints(amount);
   const stickers=Math.floor(total/POINTS_PER_STICKER);
+  const isBonus=amount>=THRESHOLD_AMOUNT;
 
   box.className='result ok';
-  box.innerHTML=`ซื้อ <b>${amount.toLocaleString()}</b> บาท → โบนัส <b>${bonus.toLocaleString()}</b> → รวม <b>${total.toLocaleString()}</b> แต้ม → <b>${stickers.toLocaleString()}</b> สติ๊กเกอร์`;
+  box.innerHTML=`ซื้อ <b>${amount.toLocaleString()}</b> บาท ${isBonus?'(อัตราโบนัส 0.67 บาท/แต้ม)':'(อัตราปกติ 1 บาท/แต้ม)'} → รวม <b>${total.toLocaleString()}</b> แต้ม → <b>${stickers.toLocaleString()}</b> สติ๊กเกอร์`;
 }
 
 async function submitVote(){
