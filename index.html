@@ -381,14 +381,42 @@ function updateAmountPreview(){
 }
 
 async function submitVote(){
-  const queue=document.getElementById('queue-no').value.trim();
-  const mc=document.getElementById('mc-select').value;
-  const resultBox=document.getElementById('vote-result');
+  const queue = document.getElementById('queue-no').value.trim();
+  const mc = document.getElementById('mc-select').value;
+  const amount = parseInt(document.getElementById('amount-input').value, 10);
+  const resultBox = document.getElementById('vote-result');
 
-  if(!queue || !selectedAmount){
-    showResult(resultBox,false,'กรุณากรอกเลขคิวและจำนวนเงินที่ซื้อ');
+  if(!queue || !amount){
+    showResult(resultBox, false, 'กรุณากรอกเลขคิวและจำนวนเงินที่ซื้อ');
     return;
   }
+
+  if(!Number.isInteger(amount) || amount < 5 || amount > 100000){
+    showResult(resultBox, false, 'กรุณากรอกจำนวนเต็มระหว่าง 5 - 100000 บาท');
+    return;
+  }
+
+  // ส่งข้อมูลไป Apps Script
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'submitVote',
+      token: session.token,
+      voterQueueNo: queue,
+      mcNumber: mc,
+      amount: amount
+    })
+  });
+
+  const data = await response.json();
+
+  if(data.success){
+    showResult(resultBox, true, 'บันทึกการโหวตเรียบร้อย');
+  } else {
+    showResult(resultBox, false, data.error || 'เกิดข้อผิดพลาด');
+  }
+}
 
   await withButtonLock('submit-vote-btn', async ()=>{
     try{
